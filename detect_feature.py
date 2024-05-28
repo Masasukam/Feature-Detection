@@ -5,9 +5,9 @@ import numpy as np
 import scipy
 from scipy import ndimage, spatial
 
-import transformations
+import trans_rot_scale
 
-from transformations import *
+from trans_rot_scale import *
 
 def is_within_bounds(array_shape, indices):
 
