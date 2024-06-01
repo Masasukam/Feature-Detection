@@ -45,8 +45,6 @@ def computeHv(grayscale_image):
     return harris_response, gradient_orientation
 
 
-
-
 def computeLM(harris_response):
     
     local_maxima = (harris_response == ndimage.maximum_filter(harris_response, size=7, mode='constant', cval=-1e10))
@@ -70,11 +68,13 @@ def cornerDetection(harris_response, gradient_orientation):
     return detected_features
 
 
+## Compute MOPS Descriptors ############################################################
 def MOPSDescriptorsComputation(srcImage, features):
 
     srcImage = srcImage.astype(np.float32)
     srcImage /= 255.
-
+    # This image represents the window around the feature you need to
+    # compute to store as the feature descriptor (row-major)
     windowSize = 8
 
     descriptors = np.zeros((len(features), windowSize * windowSize))
@@ -125,4 +125,49 @@ def MOPSDescriptorsComputation(srcImage, features):
 
     # print(count)
     return descriptors
+
+
+def match(img1_desc, img2_desc):
+
+    vec_match = []
+    # 2D array, 35330 features and each feature with 64 (8x8) windowSize
+    assert img1_desc.ndim == 2
+    assert img2_desc.ndim == 2
+    assert img1_desc.shape[1] == img2_desc.shape[1]
+
+    if img1_desc.shape[0] == 0 or img2_desc.shape[0] == 0:
+        return []
+
+    # Compute the SSD between all descriptors
+    distances = spatial.distance.cdist(img1_desc, img2_desc, 'sqeuclidean')
+
+    for idx1, dists in enumerate(distances):
+        # Sort the distances for each feature in img1_desc in ascending order
+        sorted_indices = np.argsort(dists)
+        
+        # Get the SSD values for the closest and second closest vec_match
+        ssd_closest = dists[sorted_indices[0]]
+        ssd_second_closest = dists[sorted_indices[1]]
+        
+        # Handle the case where the SSD distance is negligibly small
+        if ssd_closest < 1e-5:
+            ssd_closest = 1
+        
+        if len(dists < 2):
+            score = 0
+
+        # Avoid division by zero
+        if ssd_second_closest < 1e-5:
+            score = 0
+        else:
+            # Compute the ratio of the SSD distances
+            score = ssd_closest / ssd_second_closest
+        
+        vec_match.append((idx1, sorted_indices[0], score))
+        
+
+    return vec_match
+
+
+
 
